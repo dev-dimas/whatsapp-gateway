@@ -1,12 +1,12 @@
 version: '3.9'
 services:
   whatsapp:
-    image: devdimas/whatsappapi:${TAG:-latest}
+    image: devdimas/whatsappgateway:${TAG:-latest}
     build:
       context: .
       dockerfile: Dockerfile
     environment:
-      - DB_CONNECTION_STRING=mongodb://mongodb:27017/swa
+      - DB_CONNECTION_STRING=mongodb://mongodb:27017/whatsapp-gateway
     ports:
       - 80:80
     volumes:

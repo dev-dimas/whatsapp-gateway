@@ -1,13 +1,14 @@
 {
-  "name": "whatsappapi",
+  "name": "whatsapp-gateway",
   "version": "2.1.1",
   "description": "",
   "scripts": {
     "build": "tsc && yarn run copy-static-assets",
-    "start": "node build/server.js",
+    "start": "yarn run build && node build/server.js",
     "start:dev": "nodemon --ignore data/ src/server.ts",
     "dev": "yarn run start:dev",
     "lint": "eslint . --ext .ts",
+    "type-check": "tsc --noEmit",
     "copy-static-assets": "ts-node copy-static-assets.ts"
   },
   "repository": {

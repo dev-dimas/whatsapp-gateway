@@ -8,7 +8,7 @@ import { WhatsappService } from './services/whatsapp-service';
 import { SESSION_SECRET, DB_CONNECTION_STRING, PATH_BASE } from './util/environment';
 
 // Controllers (route handlers)
-// import * as homeController from './controllers/home';
+import * as homeController from './controllers/home';
 import * as messageController from './controllers/message';
 // import * as otpController from './controllers/otp';
 import * as qrController from './controllers/qr';
@@ -51,7 +51,7 @@ app.use(express.static(path.join(__dirname, 'public'), { maxAge: 31557600000 }))
  * Primary app routes.
  */
 const router = express.Router();
-// router.get('/', homeController.index);
+router.get('/', homeController.index);
 // router.get('/message', messageController.getMessageForm);
 router.post('/message', exposeWhatsappService, messageController.postMessage);
 router.get('/qr', exposeWhatsappService, qrController.getQrCode);
