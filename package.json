@@ -21,6 +21,7 @@
   "dependencies": {
     "@adiwajshing/keyed-db": "^0.2.4",
     "@hapi/boom": "^10.0.0",
+    "@types/multer": "^2.0.0",
     "@whiskeysockets/baileys": "^6.5.0",
     "axios": "^1.5.1",
     "bluebird": "^3.7.2",
@@ -33,6 +34,7 @@
     "http-status-codes": "^2.2.0",
     "libsignal-node": "^2.0.1",
     "mongoose": "^7.4.2",
+    "multer": "^2.0.1",
     "pug": "^3.0.2",
     "qrcode": "^1.5.3",
     "qrcode-terminal": "^0.12.0",

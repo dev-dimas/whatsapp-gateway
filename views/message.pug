@@ -1,26 +1,76 @@
 extends layout
 
-block content 
+block content
   .notif
 
   .page-header
-    h3 Send Message Form
+    h3 Send Message
     hr
 
-  form.form-horizontal(id='messageForm')
-    .form-group.row.justify-content-md-center.mb-3
-      label.col-sm-2.col-form-label.text-right.font-weight-bold(for='phoneNumber') Phone Number
-      .col-sm-8
-        input.form-control(type='text', name='phoneNumber', id='phoneNumber', autofocus=true, minlength=10, required=true)
-    .form-group.row.justify-content-md-center.mb-3
-      label.col-sm-2.col-form-label.text-right.font-weight-bold(for='message') Message
-      .col-sm-8
-        textarea.form-control(name='message', id='message', rows='7', minlength=3, required=true)
-    .form-group.row.justify-content-md-center.mb-3
-      .offset-sm-2.col-sm-8
-        button.btn.btn-primary(type='submit' id='submitButton')
-          i.bi.bi-envelope-fill
-          |  Send
+  ul.nav.nav-tabs(id='messageTabs' role='tablist')
+    li.nav-item(role='presentation')
+      button.nav-link.active(id='text-tab' data-bs-toggle='tab' data-bs-target='#text' type='button' role='tab' aria-controls='text' aria-selected='true') Text
+    li.nav-item(role='presentation')
+      button.nav-link(id='image-tab' data-bs-toggle='tab' data-bs-target='#image' type='button' role='tab' aria-controls='image' aria-selected='false') Image
+    li.nav-item(role='presentation')
+      button.nav-link(id='document-tab' data-bs-toggle='tab' data-bs-target='#document' type='button' role='tab' aria-controls='document' aria-selected='false') Document
+
+  .tab-content(id='messageTabsContent')
+    .tab-pane.fade.show.active(id='text' role='tabpanel' aria-labelledby='text-tab')
+      form.form-horizontal(id='messageForm')
+        .form-group.row.justify-content-md-center.mb-3
+          label.col-sm-2.col-form-label.text-right.font-weight-bold(for='phoneNumber') Phone Number
+          .col-sm-8
+            input.form-control(type='text', name='phoneNumber', id='phoneNumber', autofocus=true, minlength=10, required=true)
+        .form-group.row.justify-content-md-center.mb-3
+          label.col-sm-2.col-form-label.text-right.font-weight-bold(for='message') Message
+          .col-sm-8
+            textarea.form-control(name='message', id='message', rows='7', minlength=3, required=true)
+        .form-group.row.justify-content-md-center.mb-3
+          .offset-sm-2.col-sm-8
+            button.btn.btn-primary(type='submit' id='submitButton')
+              i.bi.bi-envelope-fill
+              |  Send
+
+    .tab-pane.fade(id='image' role='tabpanel' aria-labelledby='image-tab')
+      form.form-horizontal(id='imageForm')
+        .form-group.row.justify-content-md-center.mb-3
+          label.col-sm-2.col-form-label.text-right.font-weight-bold(for='phoneNumberImage') Phone Number
+          .col-sm-8
+            input.form-control(type='text', name='phoneNumber', id='phoneNumberImage', minlength=10, required=true)
+        .form-group.row.justify-content-md-center.mb-3
+          label.col-sm-2.col-form-label.text-right.font-weight-bold(for='imageFile') Image
+          .col-sm-8
+            input.form-control(type='file', name='image', id='imageFile', required=true, accept='image/*')
+        .form-group.row.justify-content-md-center.mb-3
+          label.col-sm-2.col-form-label.text-right.font-weight-bold(for='captionImage') Caption
+          .col-sm-8
+            input.form-control(type='text', name='caption', id='captionImage')
+        .form-group.row.justify-content-md-center.mb-3
+          .offset-sm-2.col-sm-8
+            button.btn.btn-primary(type='submit' id='submitImageButton')
+              i.bi.bi-image-fill
+              |  Send
+
+    .tab-pane.fade(id='document' role='tabpanel' aria-labelledby='document-tab')
+      form.form-horizontal(id='documentForm')
+        .form-group.row.justify-content-md-center.mb-3
+          label.col-sm-2.col-form-label.text-right.font-weight-bold(for='phoneNumberDocument') Phone Number
+          .col-sm-8
+            input.form-control(type='text', name='phoneNumber', id='phoneNumberDocument', minlength=10, required=true)
+        .form-group.row.justify-content-md-center.mb-3
+          label.col-sm-2.col-form-label.text-right.font-weight-bold(for='documentFile') Document
+          .col-sm-8
+            input.form-control(type='file', name='document', id='documentFile', required=true)
+        .form-group.row.justify-content-md-center.mb-3
+          label.col-sm-2.col-form-label.text-right.font-weight-bold(for='captionDocument') Caption
+          .col-sm-8
+            input.form-control(type='text', name='caption', id='captionDocument')
+        .form-group.row.justify-content-md-center.mb-3
+          .offset-sm-2.col-sm-8
+            button.btn.btn-primary(type='submit' id='submitDocumentButton')
+              i.bi.bi-file-earmark-fill
+              |  Send
 
 append scripts
   script.
@@ -54,3 +104,79 @@ append scripts
         }
       });
     });
+
+    $("#imageForm").submit(function(e){
+      e.preventDefault();
+      $("#submitImageButton").attr('disabled', true);
+
+      var host = "#{pathBase}"
+      var formData = new FormData(this);
+      $.ajax({
+        url: `${host}/message/image`,
+        cache: false,
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function(json){
+          $("#submitImageButton").attr('disabled', false);
+          $(".notif").append(
+            "<div class='alert alert-success alert-dismissible fade show' role='alert'> Success <button type='button' class='btn-close' data-bs-dismiss='alert' aria-label='Close'></button></div>"
+          );
+        },
+        error: function(errorMessage){
+          $("#submitImageButton").attr('disabled', false);
+          const errors = errorMessage.responseJSON.errors;
+          if (errors) {
+            errors.forEach(function(error){
+              $(".notif").append(
+                "<div class='alert alert-danger alert-dismissible fade show' role='alert'> " + error.msg + " <button type='button' class='btn-close' data-bs-dismiss='alert' aria-label='Close'></button></div>"
+              );
+            })
+          } else {
+            $(".notif").append(
+              "<div class='alert alert-danger alert-dismissible fade show' role='alert'> " + errorMessage.responseJSON.message + " <button type='button' class='btn-close' data-bs-dismiss='alert' aria-label='Close'></button></div>"
+            );
+          }
+        }
+      });
+    });
+
+    $("#documentForm").submit(function(e){
+      e.preventDefault();
+      $("#submitDocumentButton").attr('disabled', true);
+
+      var host = "#{pathBase}"
+      var formData = new FormData(this);
+      $.ajax({
+        url: `${host}/message/document`,
+        cache: false,
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function(json){
+          $("#submitDocumentButton").attr('disabled', false);
+          $(".notif").append(
+            "<div class='alert alert-success alert-dismissible fade show' role='alert'> Success <button type='button' class='btn-close' data-bs-dismiss='alert' aria-label='Close'></button></div>"
+          );
+        },
+        error: function(errorMessage){
+          $("#submitDocumentButton").attr('disabled', false);
+          const errors = errorMessage.responseJSON.errors;
+          if (errors) {
+            errors.forEach(function(error){
+              $(".notif").append(
+                "<div class='alert alert-danger alert-dismissible fade show' role='alert'> " + error.msg + " <button type='button' class='btn-close' data-bs-dismiss='alert' aria-label='Close'></button></div>"
+              );
+            })
+          } else {
+            $(".notif").append(
+              "<div class='alert alert-danger alert-dismissible fade show' role='alert'> " + errorMessage.responseJSON.message + " <button type='button' class='btn-close' data-bs-dismiss='alert' aria-label='Close'></button></div>"
+            );
+          }
+        }
+      });
+    });
+  
+  script(src='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js')

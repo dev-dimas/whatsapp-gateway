@@ -54,6 +54,8 @@ const router = express.Router();
 router.get('/', homeController.index);
 // router.get('/message', messageController.getMessageForm);
 router.post('/message', exposeWhatsappService, messageController.postMessage);
+router.post('/message/image', exposeWhatsappService, messageController.postImageMessage);
+router.post('/message/document', exposeWhatsappService, messageController.postDocumentMessage);
 router.get('/qr', exposeWhatsappService, qrController.getQrCode);
 router.get('/status', exposeWhatsappService, statusController.getStatus);
 // router.get('/otp', otpController.getOtpForm);

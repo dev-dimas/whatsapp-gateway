@@ -127,6 +127,39 @@ export class WhatsappService {
     });
   }
 
+  async SendWhatsappMediaMessage(
+    phoneNumber: string | null | undefined,
+    file: Express.Multer.File,
+    filetype: string,
+    caption: string,
+  ) {
+    logger.info(`Sending To: ${phoneNumber} with file: ${file.originalname}`);
+
+    const jid = FormatToWhatsappJid(phoneNumber);
+    logger.info(`Formatted jid to: ${jid}`);
+
+    await this.sock.presenceSubscribe(jid);
+    await delay(10);
+    await this.sock.sendPresenceUpdate('composing', jid);
+    await delay(10);
+    await this.sock.sendPresenceUpdate('available', jid);
+    await delay(10);
+
+    if (filetype === 'image') {
+      await this.sock.sendMessage(jid, {
+        image: file.buffer,
+        caption: caption,
+      });
+    } else if (filetype === 'document') {
+      await this.sock.sendMessage(jid, {
+        document: file.buffer,
+        mimetype: file.mimetype,
+        fileName: file.originalname,
+        caption: caption,
+      });
+    }
+  }
+
   GetStatus() {
     if (this.needRestartService) {
       return {
