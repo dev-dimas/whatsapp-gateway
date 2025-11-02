@@ -1,9 +1,9 @@
-import { WhatsappService } from "../../services/whatsapp-service"
+import { WhatsappAccountManager } from "../../services/whatsapp-account-manager";
 
 declare global {
   namespace Express {
     export interface Request {
-      wa?: WhatsappService
+      waManager?: WhatsappAccountManager;
     }
   }
 }

@@ -1,4 +1,4 @@
-version: '3.9'
+version: "3.9"
 services:
   whatsapp:
     image: devdimas/whatsappgateway:${TAG:-latest}
@@ -6,18 +6,25 @@ services:
       context: .
       dockerfile: Dockerfile
     environment:
-      - DB_CONNECTION_STRING=mongodb://mongodb:27017/whatsapp-gateway
+      - DB_CONNECTION_STRING=mongodb://mongodb:27018/whatsapp-gateway
     ports:
       - 80:80
     volumes:
       - whatsapp_data:/app/data
 
   mongodb:
-    image: mongodb/mongodb-community-server:6.0-ubi8
+    image: "bitnamilegacy/mongodb:8.0"
+    environment:
+      - MONGODB_ADVERTISED_HOSTNAME=127.0.0.1
+      - MONGODB_REPLICA_SET_MODE=primary
+      - MONGODB_ROOT_USER=user
+      - MONGODB_ROOT_PASSWORD=root
+      - MONGODB_REPLICA_SET_KEY=replicasetkey123
     ports:
-      - 27017:27017
+      - "27018:27017"
     volumes:
-      - mongo_db:/data/db
+      - "mongo-db:/bitnami/mongodb"
+    restart: unless-stopped
 
 volumes:
   whatsapp_data: {}

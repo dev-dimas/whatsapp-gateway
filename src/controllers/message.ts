@@ -1,11 +1,11 @@
 /* eslint-disable no-useless-escape */
-'use strict';
+"use strict";
 
-import { Response, Request } from 'express';
-import { body, validationResult } from 'express-validator';
-import { StatusCodes, ReasonPhrases } from 'http-status-codes';
-import { PATH_BASE } from '../util/environment';
-import multer from 'multer';
+import { Response, Request } from "express";
+import { body, validationResult } from "express-validator";
+import { StatusCodes, ReasonPhrases } from "http-status-codes";
+import { PATH_BASE } from "../util/environment";
+import multer from "multer";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -19,26 +19,31 @@ const upload = multer({
  * @route GET /message
  */
 export const getMessageForm = (req: Request, res: Response) => {
-  return res.render('message', {
-    title: 'Send Message',
+  return res.render("message", {
+    title: "Send Message",
     pathBase: PATH_BASE,
   });
 };
 
 /**
  * Send Message
- * @route POST /message
+ * @route POST /message (legacy)
+ * @route POST /accounts/:accountId/message (multi-account)
  */
 export const postMessage = async (req: Request, res: Response) => {
-  await body('phoneNumber')
+  await body("phoneNumber")
     .notEmpty()
-    .withMessage('Phone number cannot be blank!')
-    .matches('^[0-9+ -]+$')
-    .withMessage('Invalid phone number format!')
+    .withMessage("Phone number cannot be blank!")
+    .matches("^[0-9+ -]+$")
+    .withMessage("Invalid phone number format!")
     .trim()
     .run(req);
 
-  await body('message').notEmpty().withMessage('Message cannot be blank!').trim().run(req);
+  await body("message")
+    .notEmpty()
+    .withMessage("Message cannot be blank!")
+    .trim()
+    .run(req);
 
   const errors = validationResult(req);
 
@@ -52,22 +57,46 @@ export const postMessage = async (req: Request, res: Response) => {
 
   const phoneNumber = req.body.phoneNumber;
   const message = req.body.message;
+  const accountId = req.params.accountId;
 
-  req.wa!.SendWhatsappSimpleMessage(phoneNumber, message);
+  // Multi-account mode
+  if (accountId && req.waManager) {
+    const result = await req.waManager.SendMessage(
+      accountId,
+      phoneNumber,
+      message
+    );
 
-  return res.status(StatusCodes.OK).json({
-    statusCode: StatusCodes.OK,
-    message: ReasonPhrases.OK,
+    if (!result.success) {
+      return res.status(StatusCodes.BAD_REQUEST).json({
+        statusCode: StatusCodes.BAD_REQUEST,
+        message: result.message,
+        waitTime: result.waitTime,
+        errors: null,
+      });
+    }
+
+    return res.status(StatusCodes.OK).json({
+      statusCode: StatusCodes.OK,
+      message: result.message,
+      errors: null,
+    });
+  }
+
+  return res.status(StatusCodes.SERVICE_UNAVAILABLE).json({
+    statusCode: StatusCodes.SERVICE_UNAVAILABLE,
+    message: "WhatsApp service not available",
     errors: null,
   });
 };
 
 /**
  * Send Image Message
- * @route POST /message/image
+ * @route POST /message/image (legacy)
+ * @route POST /accounts/:accountId/message/image (multi-account)
  */
 export const postImageMessage = async (req: Request, res: Response) => {
-  upload.single('image')(req, res, async (err) => {
+  upload.single("image")(req, res, async (err) => {
     if (err) {
       return res.status(StatusCodes.BAD_REQUEST).json({
         StatusCode: StatusCodes.BAD_REQUEST,
@@ -76,15 +105,15 @@ export const postImageMessage = async (req: Request, res: Response) => {
       });
     }
 
-    await body('phoneNumber')
+    await body("phoneNumber")
       .notEmpty()
-      .withMessage('Phone number cannot be blank!')
-      .matches('^[0-9+ -]+$')
-      .withMessage('Invalid phone number format!')
+      .withMessage("Phone number cannot be blank!")
+      .matches("^[0-9+ -]+$")
+      .withMessage("Invalid phone number format!")
       .trim()
       .run(req);
 
-    await body('caption').trim().run(req);
+    await body("caption").trim().run(req);
 
     const errors = validationResult(req);
 
@@ -99,20 +128,45 @@ export const postImageMessage = async (req: Request, res: Response) => {
     const phoneNumber = req.body.phoneNumber;
     const caption = req.body.caption;
     const file = req.file;
+    const accountId = req.params.accountId;
 
     if (!file) {
       return res.status(StatusCodes.BAD_REQUEST).json({
         StatusCode: StatusCodes.BAD_REQUEST,
-        message: 'Image file cannot be blank!',
+        message: "Image file cannot be blank!",
         errors: null,
       });
     }
 
-    req.wa!.SendWhatsappMediaMessage(phoneNumber, file, 'image', caption);
+    // Multi-account mode
+    if (accountId && req.waManager) {
+      const result = await req.waManager.SendMediaMessage(
+        accountId,
+        phoneNumber,
+        file,
+        "image",
+        caption
+      );
 
-    return res.status(StatusCodes.OK).json({
-      statusCode: StatusCodes.OK,
-      message: ReasonPhrases.OK,
+      if (!result.success) {
+        return res.status(StatusCodes.BAD_REQUEST).json({
+          statusCode: StatusCodes.BAD_REQUEST,
+          message: result.message,
+          waitTime: result.waitTime,
+          errors: null,
+        });
+      }
+
+      return res.status(StatusCodes.OK).json({
+        statusCode: StatusCodes.OK,
+        message: result.message,
+        errors: null,
+      });
+    }
+
+    return res.status(StatusCodes.SERVICE_UNAVAILABLE).json({
+      statusCode: StatusCodes.SERVICE_UNAVAILABLE,
+      message: "WhatsApp service not available",
       errors: null,
     });
   });
@@ -120,10 +174,11 @@ export const postImageMessage = async (req: Request, res: Response) => {
 
 /**
  * Send Document Message
- * @route POST /message/document
+ * @route POST /message/document (legacy)
+ * @route POST /accounts/:accountId/message/document (multi-account)
  */
 export const postDocumentMessage = async (req: Request, res: Response) => {
-  upload.single('document')(req, res, async (err) => {
+  upload.single("document")(req, res, async (err) => {
     if (err) {
       return res.status(StatusCodes.BAD_REQUEST).json({
         StatusCode: StatusCodes.BAD_REQUEST,
@@ -132,15 +187,15 @@ export const postDocumentMessage = async (req: Request, res: Response) => {
       });
     }
 
-    await body('phoneNumber')
+    await body("phoneNumber")
       .notEmpty()
-      .withMessage('Phone number cannot be blank!')
-      .matches('^[0-9+ -]+$')
-      .withMessage('Invalid phone number format!')
+      .withMessage("Phone number cannot be blank!")
+      .matches("^[0-9+ -]+$")
+      .withMessage("Invalid phone number format!")
       .trim()
       .run(req);
 
-    await body('caption').trim().run(req);
+    await body("caption").trim().run(req);
 
     const errors = validationResult(req);
 
@@ -155,20 +210,45 @@ export const postDocumentMessage = async (req: Request, res: Response) => {
     const phoneNumber = req.body.phoneNumber;
     const caption = req.body.caption;
     const file = req.file;
+    const accountId = req.params.accountId;
 
     if (!file) {
       return res.status(StatusCodes.BAD_REQUEST).json({
         StatusCode: StatusCodes.BAD_REQUEST,
-        message: 'Document file cannot be blank!',
+        message: "Document file cannot be blank!",
         errors: null,
       });
     }
 
-    req.wa!.SendWhatsappMediaMessage(phoneNumber, file, 'document', caption);
+    // Multi-account mode
+    if (accountId && req.waManager) {
+      const result = await req.waManager.SendMediaMessage(
+        accountId,
+        phoneNumber,
+        file,
+        "document",
+        caption
+      );
 
-    return res.status(StatusCodes.OK).json({
-      statusCode: StatusCodes.OK,
-      message: ReasonPhrases.OK,
+      if (!result.success) {
+        return res.status(StatusCodes.BAD_REQUEST).json({
+          statusCode: StatusCodes.BAD_REQUEST,
+          message: result.message,
+          waitTime: result.waitTime,
+          errors: null,
+        });
+      }
+
+      return res.status(StatusCodes.OK).json({
+        statusCode: StatusCodes.OK,
+        message: result.message,
+        errors: null,
+      });
+    }
+
+    return res.status(StatusCodes.SERVICE_UNAVAILABLE).json({
+      statusCode: StatusCodes.SERVICE_UNAVAILABLE,
+      message: "WhatsApp service not available",
       errors: null,
     });
   });

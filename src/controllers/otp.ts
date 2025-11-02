@@ -1,23 +1,24 @@
 /* eslint-disable no-useless-escape */
-import { Request, Response } from 'express';
-import { body, check, checkSchema, validationResult } from 'express-validator';
-import { StatusCodes, ReasonPhrases } from 'http-status-codes';
-import { FormatStandardPhoneNumber } from '../util/formatter';
-import * as otpService from '../services/otp-service';
-import { OtpCallbackType } from '../enums/otp_callback_type';
-import { sendData } from '../util/fetch';
-import { PATH_BASE } from '../util/environment';
+import { Request, Response } from "express";
+import { body, check, checkSchema, validationResult } from "express-validator";
+import { StatusCodes, ReasonPhrases } from "http-status-codes";
+import { FormatStandardPhoneNumber } from "../util/formatter";
+import * as otpService from "../services/otp-service";
+import { OtpCallbackType } from "../enums/otp_callback_type";
+import { sendData } from "../util/fetch";
+import { PATH_BASE } from "../util/environment";
 
-const actionTemplate = 'https://wa.me/{n}?text={t}';
-const messageTemplate = '*{code}*\n\n_please do not change the content._\n_mohon jangan rubah isi pesan ini._';
+const actionTemplate = "https://wa.me/{n}?text={t}";
+const messageTemplate =
+  "*{code}*\n\n_please do not change the content._\n_mohon jangan rubah isi pesan ini._";
 
 /**
  * Get OTP FORM
  * @route GET /otp
  */
 export const getOtpForm = (req: Request, res: Response) => {
-  return res.render('otp', {
-    title: 'OTP Request',
+  return res.render("otp", {
+    title: "OTP Request",
     pathBase: PATH_BASE,
   });
 };
@@ -28,21 +29,21 @@ export const getOtpForm = (req: Request, res: Response) => {
  * @route POST /otp
  */
 export const request = async (req: Request, res: Response) => {
-  await body('phoneNumber')
+  await body("phoneNumber")
     .notEmpty()
-    .withMessage('phone number cannot be blank')
-    .matches('^[0-9+ -]+$')
-    .withMessage('invalid format')
+    .withMessage("phone number cannot be blank")
+    .matches("^[0-9+ -]+$")
+    .withMessage("invalid format")
     .trim()
     .run(req);
 
-  await body('message')
+  await body("message")
     .optional()
-    .contains('{code}', {
+    .contains("{code}", {
       ignoreCase: false,
       minOccurrences: 1,
     })
-    .withMessage('message must contains {code} for unique id')
+    .withMessage("message must contains {code} for unique id")
     .trim()
     .run(req);
 
@@ -50,8 +51,9 @@ export const request = async (req: Request, res: Response) => {
     callbackUrl: {
       optional: true,
       matches: {
-        options: /^(https?|ftp):\/\/[^\s/$.?#].[^\s]*$|^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/i,
-        errorMessage: 'invalid format url',
+        options:
+          /^(https?|ftp):\/\/[^\s/$.?#].[^\s]*$|^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/i,
+        errorMessage: "invalid format url",
       },
       trim: true,
     },
@@ -59,7 +61,7 @@ export const request = async (req: Request, res: Response) => {
       optional: true,
       isIn: {
         options: Object.values(OtpCallbackType).filter((v) => isNaN(Number(v))),
-        errorMessage: 'invalid format callback type',
+        errorMessage: "invalid format callback type",
       },
       trim: true,
     },
@@ -75,23 +77,39 @@ export const request = async (req: Request, res: Response) => {
   }
 
   // composing message
-  const waStatus = req.wa!.GetStatus();
+  // TODO: get whatsapp number from account status
+  const waStatus = await req.waManager?.GetAccountStatus("default");
+  if (!waStatus || !waStatus.isConnected || !waStatus.phoneNumber) {
+    return res.status(StatusCodes.SERVICE_UNAVAILABLE).json({
+      status: ReasonPhrases.SERVICE_UNAVAILABLE,
+      errors: [
+        {
+          type: "data",
+          msg: "WhatsApp service not available",
+        },
+      ],
+    });
+  }
 
   const formattedPhoneNumber = FormatStandardPhoneNumber(req.body.phoneNumber);
 
   //checking api callback
   if (req.body.callbackType && req.body.callbackUrl) {
     try {
-      if (req.body.callbackType == 'Simple') {
-        await sendData(req.body.callbackUrl, { otpId: null, phoneNumber: formattedPhoneNumber, status: 'requested' });
+      if (req.body.callbackType == "Simple") {
+        await sendData(req.body.callbackUrl, {
+          otpId: null,
+          phoneNumber: formattedPhoneNumber,
+          status: "requested",
+        });
       }
     } catch (err: unknown) {
       return res.status(StatusCodes.BAD_REQUEST).json({
         status: ReasonPhrases.BAD_REQUEST,
         errors: [
           {
-            type: 'data',
-            msg: 'INVALID_CALLBACK',
+            type: "data",
+            msg: "INVALID_CALLBACK",
           },
         ],
       });
@@ -99,13 +117,18 @@ export const request = async (req: Request, res: Response) => {
   }
 
   // generation
-  const generationResult = await otpService.Generate(formattedPhoneNumber, waStatus.phoneNumber, req.body.callbackType, req.body.callbackUrl);
+  const generationResult = await otpService.Generate(
+    formattedPhoneNumber,
+    waStatus.phoneNumber,
+    req.body.callbackType,
+    req.body.callbackUrl
+  );
   if (generationResult.err) {
     return res.status(StatusCodes.BAD_REQUEST).json({
       status: ReasonPhrases.BAD_REQUEST,
       errors: [
         {
-          type: 'data',
+          type: "data",
           msg: generationResult.val,
         },
       ],
@@ -113,8 +136,14 @@ export const request = async (req: Request, res: Response) => {
   }
 
   const message = actionTemplate
-    .replace('{n}', waStatus.phoneNumber)
-    .replace('{t}', (!req.body.message ? messageTemplate : req.body.message).replace('{code}', `otp:${generationResult.val.id}`));
+    .replace("{n}", waStatus.phoneNumber)
+    .replace(
+      "{t}",
+      (!req.body.message ? messageTemplate : req.body.message).replace(
+        "{code}",
+        `otp:${generationResult.val.id}`
+      )
+    );
 
   // return transaction id and action needed
   return res.status(StatusCodes.OK).json({
@@ -141,8 +170,8 @@ export const validate = async (req: Request, res: Response) => {
       status: ReasonPhrases.NOT_FOUND,
       errors: [
         {
-          type: 'data',
-          msg: 'transaction not found',
+          type: "data",
+          msg: "transaction not found",
         },
       ],
     });
@@ -153,8 +182,8 @@ export const validate = async (req: Request, res: Response) => {
       status: ReasonPhrases.BAD_REQUEST,
       errors: [
         {
-          type: 'data',
-          msg: 'not validated',
+          type: "data",
+          msg: "not validated",
         },
       ],
     });
@@ -172,9 +201,23 @@ export const validate = async (req: Request, res: Response) => {
  * @route GET /otp/count
  */
 export const count = async (req: Request, res: Response) => {
-  await check('start').notEmpty().withMessage('start date cannot be blank').isISO8601().toDate().withMessage('invalid format').trim().run(req);
+  await check("start")
+    .notEmpty()
+    .withMessage("start date cannot be blank")
+    .isISO8601()
+    .toDate()
+    .withMessage("invalid format")
+    .trim()
+    .run(req);
 
-  await check('end').notEmpty().withMessage('end date cannot be blank').isISO8601().toDate().withMessage('invalid format').trim().run(req);
+  await check("end")
+    .notEmpty()
+    .withMessage("end date cannot be blank")
+    .isISO8601()
+    .toDate()
+    .withMessage("invalid format")
+    .trim()
+    .run(req);
 
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -198,20 +241,23 @@ export const count = async (req: Request, res: Response) => {
         status: ReasonPhrases.BAD_REQUEST,
         errors: [
           {
-            type: 'data',
-            msg: 'End date must greater than equal to start date',
+            type: "data",
+            msg: "End date must greater than equal to start date",
           },
         ],
       });
     }
 
-    const countResult = await otpService.Count(startDate.toISOString().split('T')[0], endDate.toISOString().split('T')[0]);
+    const countResult = await otpService.Count(
+      startDate.toISOString().split("T")[0],
+      endDate.toISOString().split("T")[0]
+    );
     if (countResult.err) {
       return res.status(StatusCodes.BAD_REQUEST).json({
         status: ReasonPhrases.BAD_REQUEST,
         errors: [
           {
-            type: 'data',
+            type: "data",
             msg: countResult.val,
           },
         ],
@@ -232,7 +278,7 @@ export const count = async (req: Request, res: Response) => {
       status: ReasonPhrases.BAD_REQUEST,
       errors: [
         {
-          type: 'data',
+          type: "data",
           msg: errorObject.message,
         },
       ],
